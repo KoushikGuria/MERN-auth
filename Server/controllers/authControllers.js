@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import userModel from '../models/userModel.js';
+import transporter from '../config/nodemailer.js';
 
 export const register = async (req, res) => {
     const { name, email, password } = req.body;
@@ -31,6 +32,16 @@ export const register = async (req, res) => {
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
+
+        //Sending welcome email
+        const mailOptions = {
+            from: process.env.SENDER_EMAIL,
+            to: email,
+            subject: "Welcome to MERN Auth",
+            text: `Hello ${name},\n\nThank you for registering with us! We are excited to have you on board.\n\nBest regards,\nThe Team`
+        }
+
+        await transporter.sendMail(mailOptions);
 
         return res.json({success: true, message: "Registration successful"});
 
@@ -87,6 +98,39 @@ export const logout = async (req, res) => {
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
         });
         return res.json({success: true, message: "Logout successful"});
+    } catch (error) {
+        return res.json({success: false, message: error.message});
+    }
+}
+
+//Send Verification OTP to the user's email
+export const sendVerifyOtp = async (req, res) => {
+    try {
+        const { userId } = req.body;
+
+        const user = await userModel.findById(userId);
+
+        if(user.isAccountVerified) {
+            return res.json({success: false, message: "Account already verified"});
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString(); // Generate a 6-digit OTP
+
+        user.verifyOtp = otp;
+        user.verifyOtpExpireAt = Date.now() + 10 * 60 * 1000; // OTP valid for 10 minutes
+
+        await user.save();
+
+        const mailOptions = {
+            from: process.env.SENDER_EMAIL,
+            to: user.email,
+            subject: "Verify your account",
+            text: `Your verification OTP is ${otp}. It is valid for 10 minutes.`
+        }
+        await transporter.sendMail(mailOptions);
+
+        res.json({success: true, message: "OTP sent to your email"});
+        
     } catch (error) {
         return res.json({success: false, message: error.message});
     }
