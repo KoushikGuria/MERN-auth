@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AppContent } from '../context/AppContext';
 import { toast } from 'react-toastify';
+import { useEffect } from 'react';
 
 const EmailVerify = () => {
 
@@ -54,6 +55,10 @@ const EmailVerify = () => {
       toast.error(error.message);
     }
   }
+
+  useEffect(() => {
+    isLoggedin && userData && userData.isAccountVerified && navigate('/')
+  },[isLoggedin, userData, navigate]);
 
   return (
     <div className='flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-200 to-purple-400'>
